@@ -13,7 +13,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
-          port: 2244
+          port: ${{ secrets.SSH_PORT }}
           
           script: |
             # =========================================================
@@ -21,7 +21,7 @@ jobs:
             # =========================================================
             cd /home/nection/projectes/Calculadora_Petjada_carboni
             
-            git fetch origin main
+            git fetch origin main 
             git reset --hard origin/main
             npm ci --production
             pm2 restart calculadora-carboni
