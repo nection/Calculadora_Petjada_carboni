@@ -1,56 +1,44 @@
-# =================================================================
-# DISPARADOR (TRIGGER)
-# Aquesta secció li diu a GitHub QUAN ha d'executar aquestes instruccions.
-# =================================================================
+# Nom del flux de treball
+name: Deploy Calculadora Carboni to NUC
+
+# S'executa només quan es fa un 'push' a la branca 'main'
 on:
-  # Volem que s'executi cada cop que fem un "push" (pugem canvis) al repositori.
   push:
-    # Però només ens interessa quan els canvis es pugin a la branca "main".
-    # Si la teva branca principal es diu "master", canvia "main" per "master".
     branches:
       - main
 
-# =================================================================
-# FEINES (JOBS)
-# Un workflow pot tenir una o més feines. Nosaltres només en necessitem una.
-# =================================================================
+# Feines a realitzar
 jobs:
-  # Definim una única feina i li diem "deploy".
   deploy:
-    # Li diem a GitHub que executi aquesta feina en una màquina virtual neta
-    # amb la última versió d'Ubuntu.
     runs-on: ubuntu-latest
-
-    # Els "steps" (passos) són les accions individuals que s'executaran en ordre.
     steps:
-      # Pas 1: Configurar la clau SSH per a la connexió segura.
-      # Aquesta acció agafa la teva clau privada (que has guardat com a "Secret" a GitHub)
-      # i la prepara per a poder connectar-se al teu servidor.
+      # Pas 1: Configura la clau SSH (sense canvis)
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_KEY }}
           known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
           
-      # Pas 2: Afegir el teu servidor a la llista de hosts coneguts de la màquina virtual.
-      # Això és un pas de seguretat que evita un missatge de confirmació manual
-      # ("Are you sure you want to continue connecting?").
+      # Pas 2: Afegeix el servidor a hosts coneguts (amb el port CORRECTE)
       - name: Adding Known Hosts
-        run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+        # =================================================================
+        # CANVI CRUCIAL 1:
+        # Afegim '-p 2244' per a dir-li a ssh-keyscan que escanegi el port correcte.
+        # =================================================================
+        run: ssh-keyscan -p 2244 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      # Pas 3: Connectar-se al teu servidor i executar l'script de desplegament.
-      # Aquesta és l'acció principal. Utilitza les teves credencials (guardades com a "Secrets")
-      # per a obrir una connexió SSH al teu servidor i executar una comanda.
+      # Pas 3: Executa l'script de desplegament al port CORRECTE
       - name: Deploy Calculadora Carboni
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          port: 22
-          # Aquesta és la comanda que s'executarà al teu servidor:
-          # 1. 'cd ...' -> Es mou a la carpeta del teu projecte.
-          # 2. 'git pull' -> Descarrega els últims canvis (incloent el nou deploy.sh).
-          # 3. './deploy.sh' -> Executa l'script que acabem de descarregar.
+          # =================================================================
+          # CANVI CRUCIAL 2:
+          # Afegim aquesta línia per a especificar el port de connexió.
+          # =================================================================
+          port: 2244
+          # La comanda que s'executa un cop connectats no canvia.
           script: |
             cd /var/www/Calculadora_Petjada_carboni && git pull && ./deploy.sh
