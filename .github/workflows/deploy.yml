@@ -1,44 +1,45 @@
-# Nom del flux de treball
-name: Deploy Calculadora Carboni to NUC
+# Nom del procés que veuràs a GitHub
+name: Desplegament de la Calculadora de Carboni
 
-# S'executa només quan es fa un 'push' a la branca 'main'
+# Aquesta acció s'activa cada cop que fas un 'push' a la branca 'main'
 on:
   push:
     branches:
       - main
 
-# Feines a realitzar
+# Defineix les tasques que s'han d'executar
 jobs:
   deploy:
+    # L'automatització s'executa en un servidor de GitHub amb Ubuntu
     runs-on: ubuntu-latest
-    steps:
-      # Pas 1: Configura la clau SSH (sense canvis)
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_KEY }}
-          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
-          
-      # Pas 2: Afegeix el servidor a hosts coneguts (amb el port CORRECTE)
-      - name: Adding Known Hosts
-        # =================================================================
-        # CANVI CRUCIAL 1:
-        # Afegim '-p 2244' per a dir-li a ssh-keyscan que escanegi el port correcte.
-        # =================================================================
-        run: ssh-keyscan -p 2244 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      # Pas 3: Executa l'script de desplegament al port CORRECTE
-      - name: Deploy Calculadora Carboni
+    # Defineix els passos del procés
+    steps:
+      # Aquest és l'únic pas: connectar-se al teu servidor i executar les comandes
+      - name: Connectar, actualitzar i reiniciar la Calculadora de Carboni
+        # Usem una acció pre-feta per facilitar la connexió SSH
         uses: appleboy/ssh-action@master
         with:
+          # Agafem les dades dels secrets amb els noms CORRECTES
           host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          # =================================================================
-          # CANVI CRUCIAL 2:
-          # Afegim aquesta línia per a especificar el port de connexió.
-          # =================================================================
-          port: 2244
-          # La comanda que s'executa un cop connectats no canvia.
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 2244 # <--- El teu port segur
+          
+          # Aquestes són les comandes adaptades per al NOU projecte
           script: |
-            cd /var/www/Calculadora_Petjada_carboni && git pull && ./deploy.sh
+            # 1. Anem a la carpeta de la Calculadora de Carboni
+            cd /var/www/Calculadora_Petjada_carboni
+            
+            # 2. Descarreguem l'últim estat del repositori remot
+            git fetch origin main
+            
+            # 3. Forcem que els arxius siguin un clon exacte de la versió remota
+            git reset --hard origin/main
+            
+            # 4. Instal·lem les dependències de producció de forma neta
+            # (npm ci és més ràpid i segur que npm install per a producció)
+            npm ci --production
+            
+            # 5. Reiniciem l'aplicació amb PM2 amb el nom CORRECTE
+            pm2 restart calculadora-carboni
