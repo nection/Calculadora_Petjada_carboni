@@ -1,44 +1,22 @@
-# Nom del flux de treball
-name: Deploy Calculadora Carboni to NUC
-
-# S'executa només quan es fa un 'push' a la branca 'main'
+name: Desplegament de la Calculadora de Carboni
 on:
   push:
     branches:
       - main
-
-# Feines a realitzar
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Pas 1: Configura la clau SSH (sense canvis)
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_KEY }}
-          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
-          
-      # Pas 2: Afegeix el servidor a hosts coneguts (amb el port CORRECTE)
-      - name: Adding Known Hosts
-        # =================================================================
-        # CANVI CRUCIAL 1:
-        # Afegim '-p 2244' per a dir-li a ssh-keyscan que escanegi el port correcte.
-        # =================================================================
-        run: ssh-keyscan -p 2244 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
-      # Pas 3: Executa l'script de desplegament al port CORRECTE
-      - name: Deploy Calculadora Carboni
+      - name: Connectar, actualitzar i reiniciar
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          # =================================================================
-          # CANVI CRUCIAL 2:
-          # Afegim aquesta línia per a especificar el port de connexió.
-          # =================================================================
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 2244
-          # La comanda que s'executa un cop connectats no canvia.
           script: |
-            cd /var/www/Calculadora_Petjada_carboni && git pull && ./deploy.sh
+            cd /var/www/Calculadora_Petjada_carboni
+            git fetch origin main
+            git reset --hard origin/main
+            npm ci --production
+            pm2 restart calculadora-carboni
